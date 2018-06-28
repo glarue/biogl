@@ -3,8 +3,15 @@ from functools import partial
 
 def flex_open(filename):
     """
-    A generator of lines from a variety of
-    file types, including compressed files.
+    Attempts to determine whether a file is compressed, and 
+    returns an open file object appropriate for the source 
+    file type.
+
+    Typical usage would be to replace calls to open() with 
+    calls to flex_open(), e.g.
+
+    with flex_open('compressed_file.gz') as f:
+        {do stuff} 
     
     """
     magic_dict = {
