@@ -4,6 +4,7 @@ def translate(
     phase=0,
     mask=True,
     stop_char='*',
+    as_codons=False,
     codon_map={
         'AAA': ('K', 'Lys', 'Lysine'),
         'AAC': ('N', 'Asn', 'Asparagine'),
@@ -70,11 +71,15 @@ def translate(
 
     def _get_codons(s, p=0):
         for i in range(0, len(s), 3):
-            yield s[i + p:i + p + 3]
+            codon = s[i + p:i + p + 3]
+            if codon:  # don't return blank strings
+                yield codon
 
     verbosity_index = {"single": 0, "short": 1, "long": 2}
     string = string.replace(" ", "")  # remove spaces if present
     codons = _get_codons(string, p=phase)
+    if as_codons:
+        return ' '.join(codons)
     stop_codons = ('TAG', 'TGA', 'TAA')
     amino_acids = []
     v = verbosity_index[verbosity]
