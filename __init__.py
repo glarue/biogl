@@ -9,3 +9,4 @@ from biogl.flex_open import flex_open
 from biogl.random_seq import random_seq
 from biogl.get_runtime import get_runtime
 from biogl.byte_convert import byte_convert
+from biogl.label_info import label_info
