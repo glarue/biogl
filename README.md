@@ -1,5 +1,5 @@
 # biogl
-A collection of (semi) useful small bioinformatics modules
+A collection of (semi) useful small bioinformatics functions
 
 There are a variety of ways to use this module within other Python code, some of which are platform-dependent.
 
