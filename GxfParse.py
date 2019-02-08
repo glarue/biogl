@@ -120,6 +120,7 @@ class GxfParse(object):
 
         """
         # first, do it the easy way
+        prefix = None
         infostring = self.infostring
         match = self.__field_match(infostring, ["ID="], delimiter)
         if match:
@@ -140,7 +141,9 @@ class GxfParse(object):
         try:
             tags = tag_selector[feat_type]
         except KeyError:
-            # get any ID available
+            # get any ID available, prepended with the feature type
+            # to keep different features of the same transcript unique
+            prefix = self.feat_type
             tags = ['transcriptID', 'transcript_ID', 'gene_ID', 'geneID']
 
         match = self.__field_match(
@@ -151,6 +154,9 @@ class GxfParse(object):
         if match is None and infostring.count(";") < 2:
             match = infostring.split(";")[0]
 
+        if prefix:
+            match = '{}_{}'.format(prefix, match)
+
         return match
 
 
@@ -159,15 +165,21 @@ class GxfParse(object):
         Retrieves parent information from an annotation line.
 
         """
+        # do it the easy way first
+        infostring = self.infostring
+        match = self.__field_match(infostring, ["Parent="], delimiter)
+        if match:
+            return match
+
         feat_type_converter = {"cds": "exon", "mrna": "transcript"}
         feat_type = self.feat_type
         if feat_type in feat_type_converter:
             feat_type = feat_type_converter[feat_type]
         child_tags = [
-            "Parent=", "proteinId", "protein_ID", "transcriptId",
-            "transcript_ID"
+            "Parent=", "transcript_ID",
+            "transcriptId", "proteinId", "protein_ID"
         ]
-        transcript_tags = ["Parent=", "geneId", "gene_ID"]
+        transcript_tags = ["Parent=", "gene_ID", "geneId"]
         gene_tags = ["Parent="]
         tag_selector = {
             "gene": gene_tags,
@@ -177,9 +189,9 @@ class GxfParse(object):
         try:
             tags = tag_selector[feat_type]
         except KeyError:
-            tags = list(set(child_tags + transcript_tags))
-        infostring = self.infostring
-        match = self.__field_match(infostring, tags, delimiter)
+            # tags = list(set(child_tags + transcript_tags))
+            tags = child_tags + transcript_tags
+        match = self.__field_match(infostring, tags, delimiter, tag_order=True)
         if not match and feat_type == "transcript":
             match = self.get_ID()
 
