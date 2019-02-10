@@ -24,6 +24,11 @@ class GxfParse(object):
             self.infostring = self.bits[8]
             self.feat_type = self.bits[2].lower()
             self.parent = self.get_parent()
+            self.grandparent = None
+            # try to get grandparent for child types
+            if self.feat_type in ('cds', 'exon'):
+                self.grandparent = self.__field_match(
+                    self.infostring, ['gene_id', 'geneID'], delimiter=';')
             self.name = self.get_ID()
             self.line_number = line_number
         except TypeError:
