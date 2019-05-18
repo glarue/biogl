@@ -28,8 +28,10 @@ def rev_comp(seq, use_lower=True, mask=True):
         mapper = transform_mixed
     else:
         mapper = transform
+    valid_chars = [
+        'A', 'C', 'T', 'G', 'N', 'a', 'c', 't', 'g', 'n']
     if mask is True:
-        seq = [e if e in "ACTGNactgn" else "N" for e in seq]
+        seq = [e if e in valid_chars else 'N' for e in seq]
     try:
         comp = [mapper[e] for e in seq]
     except KeyError:  # non-ATCGN characters in seq
