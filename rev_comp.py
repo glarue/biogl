@@ -28,8 +28,7 @@ def rev_comp(seq, use_lower=True, mask=True):
         mapper = transform_mixed
     else:
         mapper = transform
-    valid_chars = [
-        'A', 'C', 'T', 'G', 'N', 'a', 'c', 't', 'g', 'n']
+    valid_chars = mapper.keys()
     if mask is True:
         seq = [e if e in valid_chars else 'N' for e in seq]
     try:
@@ -38,5 +37,5 @@ def rev_comp(seq, use_lower=True, mask=True):
         comp = [mapper[e] if e in mapper else e for e in seq]
     reverse_comp = comp[::-1]
     reverse_comp_string = ''.join(reverse_comp)
-
+    
     return reverse_comp_string
