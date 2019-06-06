@@ -11,3 +11,4 @@ from biogl.get_runtime import get_runtime
 from biogl.byte_convert import byte_convert
 from biogl.label_info import label_info
 from biogl.is_fasta import is_fasta
+from biogl.recursive_items import recursive_items
