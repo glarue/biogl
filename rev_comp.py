@@ -1,8 +1,11 @@
-def rev_comp(seq, use_lower=True, mask=True):
+def rev_comp(seq, use_lower=True, mask=True, as_string=True):
     """
-    Returns reverse complement of {seq}, with
+    Returns reverse complement of <seq>, with
     any non-ACTG characters replaced with Ns 
-    if {mask}==True
+    if <mask>==True
+
+    If <as_string>, returns a string; else, returns 
+    a list.
 
     """
     transform = {
@@ -36,6 +39,7 @@ def rev_comp(seq, use_lower=True, mask=True):
     except KeyError:  # non-ATCGN characters in seq
         comp = [mapper[e] if e in mapper else e for e in seq]
     reverse_comp = comp[::-1]
-    reverse_comp_string = ''.join(reverse_comp)
+    if as_string is True:
+        reverse_comp = ''.join(reverse_comp)
     
-    return reverse_comp_string
+    return reverse_comp
