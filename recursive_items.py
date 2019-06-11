@@ -15,7 +15,9 @@ def recursive_items(
     if pattern is not None:
         pattern = re.compile(pattern)
     for root, dirs, items in os.walk(start_dir):
-        for i in items + dirs:
+        dirs.sort()
+        # dirs = sorted(dirs)
+        for i in sorted(items + dirs, key=lambda x: x.lower()):
             ipath = os.path.join(root, i)
             if is_file_filter and not os.path.isfile(ipath):
                 continue
