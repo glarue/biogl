@@ -57,7 +57,7 @@ class GxfParse(object):
         if tag_order:
             # check for first match of tags in order
             try:
-                tags = [next(t for t in tags if t.lower() in infostring)]
+                tags = [next(t for t in tags if t.lower() in infostring.lower())]
             except StopIteration:
                 return None
         info_bits = infostring.split(delimiter)
