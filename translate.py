@@ -92,7 +92,7 @@ def translate(
         try:
             aa = codon_map[c.upper()][v]
         except KeyError:
-            if c in stop_codons:
+            if c.upper() in stop_codons:
                 aa = stop_char
             elif mask:
                 aa = 'X'
