@@ -12,3 +12,4 @@ from biogl.byte_convert import byte_convert
 from biogl.label_info import label_info
 from biogl.is_fasta import is_fasta
 from biogl.recursive_items import recursive_items
+from biogl.window import window
