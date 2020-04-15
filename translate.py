@@ -1,3 +1,9 @@
+# authorship information
+__author__ = 'Graham E. Larue'
+__maintainer__ = "Graham E. Larue"
+__email__ = 'egrahamlarue@gmail.com'
+__license__ = 'GPL'
+
 def translate(
     string, 
     verbosity="single",
