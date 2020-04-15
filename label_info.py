@@ -1,6 +1,6 @@
 def label_info(intron_label, *args):
     """
-    Takes an intronator.py label and any of the
+    Takes an intronIC label and any of the
     following keywords to specify desired
     information: "gene", "transcript",
     "species", "score", "index", "out_of".
