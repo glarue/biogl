@@ -1,4 +1,4 @@
-def rev_comp(seq, use_lower=True, mask=True, as_string=True):
+def rev_comp(seq, use_lower=True, mask=False, as_string=True):
     """
     Returns reverse complement of <seq>, with
     any non-ACTG characters replaced with Ns 
@@ -34,10 +34,7 @@ def rev_comp(seq, use_lower=True, mask=True, as_string=True):
     valid_chars = mapper.keys()
     if mask is True:
         seq = [e if e in valid_chars else 'N' for e in seq]
-    try:
-        comp = [mapper[e] for e in seq]
-    except KeyError:  # non-ATCGN characters in seq
-        comp = [mapper[e] if e in mapper else e for e in seq]
+    comp = [mapper[e] if e in mapper else e for e in seq]
     reverse_comp = comp[::-1]
     if as_string is True:
         reverse_comp = ''.join(reverse_comp)

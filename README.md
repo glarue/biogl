@@ -2,7 +2,7 @@
 A collection of (semi) useful small bioinformatics functions
 
 ## Usage with `pip`
-`pip install biogl`
+`python3 -m pip install biogl`
 
 Thereafter, within Python, you should be able to simply do `import biogl` to use.
 

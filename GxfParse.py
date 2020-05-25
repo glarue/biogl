@@ -46,10 +46,10 @@ class GxfParse(object):
         """
         if l.startswith('#'):
             return None
-        l = l.strip()
-        columns = l.split("\t")
+        columns = l.strip().split("\t")
         if n and len(columns) < n:
             return None
+            
         return columns
 
     @staticmethod
@@ -71,6 +71,7 @@ class GxfParse(object):
             substring = match.split("=")[1]
         else:
             substring = match.split()[1]
+
         return substring.strip("\"")
 
 
@@ -173,31 +174,33 @@ class GxfParse(object):
         # do it the easy way first
         infostring = self.infostring
         match = self.__field_match(infostring, ["Parent="], delimiter)
-        if match:
-            return match
-
-        feat_type_converter = {"cds": "exon", "mrna": "transcript"}
-        feat_type = self.feat_type
-        if feat_type in feat_type_converter:
-            feat_type = feat_type_converter[feat_type]
-        child_tags = [
-            "Parent=", "transcript_ID",
-            "transcriptId", "proteinId", "protein_ID"
-        ]
-        transcript_tags = ["Parent=", "gene_ID", "geneId"]
-        gene_tags = ["Parent="]
-        tag_selector = {
-            "gene": gene_tags,
-            "transcript": transcript_tags,
-            "exon": child_tags
-        }
+        if not match:
+            feat_type_converter = {"cds": "exon", "mrna": "transcript"}
+            feat_type = self.feat_type
+            if feat_type in feat_type_converter:
+                feat_type = feat_type_converter[feat_type]
+            child_tags = [
+                "Parent=", "transcript_ID",
+                "transcriptId", "proteinId", "protein_ID"
+            ]
+            transcript_tags = ["Parent=", "gene_ID", "geneId"]
+            gene_tags = ["Parent="]
+            tag_selector = {
+                "gene": gene_tags,
+                "transcript": transcript_tags,
+                "exon": child_tags
+            }
+            try:
+                tags = tag_selector[feat_type]
+            except KeyError:
+                # tags = list(set(child_tags + transcript_tags))
+                tags = child_tags + transcript_tags
+            match = self.__field_match(infostring, tags, delimiter, tag_order=True)
+            if not match and feat_type == "transcript":
+                match = self.get_ID()
         try:
-            tags = tag_selector[feat_type]
-        except KeyError:
-            # tags = list(set(child_tags + transcript_tags))
-            tags = child_tags + transcript_tags
-        match = self.__field_match(infostring, tags, delimiter, tag_order=True)
-        if not match and feat_type == "transcript":
-            match = self.get_ID()
+            match = match.split(',') # updated GFF3 spec can list multiple parents
+        except:
+            match = [None]
 
         return match
