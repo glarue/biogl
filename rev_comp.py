@@ -1,10 +1,10 @@
 def rev_comp(seq, use_lower=True, mask=False, as_string=True):
     """
-    Returns reverse complement of <seq>, with
+    Returns reverse complement of {seq}, with
     any non-ACTG characters replaced with Ns 
-    if <mask>==True
+    if {mask}==True
 
-    If <as_string>, returns a string; else, returns 
+    If {as_string}, returns a string; else, returns 
     a list.
 
     """
