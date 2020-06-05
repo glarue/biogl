@@ -1,8 +1,16 @@
-def rev_comp(seq, use_lower=True, mask=False, as_string=True):
+import re
+
+def rev_comp(
+    seq, 
+    use_lower=True, 
+    mask=None, 
+    as_string=True, 
+    mask_upper=re.compile('[^ATCG]'), 
+    mask_lower=re.compile('[^ATCGatcg]')
+):
     """
     Returns reverse complement of {seq}, with
-    any non-ACTG characters replaced with Ns 
-    if {mask}==True
+    any non-ACTG characters replaced with {mask}
 
     If {as_string}, returns a string; else, returns 
     a list.
@@ -29,14 +37,16 @@ def rev_comp(seq, use_lower=True, mask=False, as_string=True):
     }
     if use_lower is True:
         mapper = transform_mixed
+        masker = mask_lower
     else:
         mapper = transform
-    valid_chars = mapper.keys()
-    if mask is True:
-        seq = [e if e in valid_chars else 'N' for e in seq]
-    comp = [mapper[e] if e in mapper else e for e in seq]
+        masker = mask_upper
+    if mask is not None:
+        seq = re.sub(masker, mask, seq)
+    mapper = str.maketrans(mapper)
+    comp = seq.translate(mapper)
     reverse_comp = comp[::-1]
-    if as_string is True:
-        reverse_comp = ''.join(reverse_comp)
+    if as_string is False:
+        reverse_comp = list(reverse_comp)
     
     return reverse_comp
