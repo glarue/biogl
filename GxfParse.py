@@ -65,7 +65,7 @@ class GxfParse(object):
         try:
             match = next(
                 e for e in info_bits
-                if any(p.lower() in e.lower() for p in tags))
+                if any(e.lower().startswith(p.lower()) for p in tags))
         except StopIteration:  # no matches found
             return None
         if "=" in match:
