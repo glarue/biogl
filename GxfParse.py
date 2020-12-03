@@ -22,7 +22,8 @@ class GxfParse(object):
             else:
                 self.phase = None
             self.infostring = self.bits[8]
-            self.feat_type = self.bits[2].lower()
+            # self.feat_type = self.bits[2].lower()
+            self.feat_type = self.get_type()
             self.parent = self.get_parent()
             self.grandparent = None
             # try to get grandparent for child types
@@ -110,14 +111,20 @@ class GxfParse(object):
         transcript_tags = ["transcriptId", "transcript_ID"]
         # Transcripts first because genes shouldn't have transcript IDs,
         # but transcripts may have gene IDs
+        match_type = None
         for ftype, tags in zip(
                 ['transcript', 'gene'], [transcript_tags, gene_tags]
         ):
             match = self.__field_match(self.infostring, tags, delimiter)
             if match:
-                return ftype
-            else:
-                return og_type
+                match_type = ftype
+                break
+        if match_type:
+            feat_type = match_type
+        else:
+            feat_type = og_type
+
+        return feat_type
 
 
     def get_ID(self, delimiter=";"):
@@ -146,7 +153,7 @@ class GxfParse(object):
         }
         try:
             tags = tag_selector[feat_type]
-        except KeyError:
+        except KeyError:  # not gene or transcript
             # get any ID available, prepended with the feature type
             # to keep different features of the same transcript unique
             prefix = self.feat_type
@@ -159,7 +166,6 @@ class GxfParse(object):
         # one tag in it (common for gtf parent features)
         if match is None and infostring.count(";") < 2:
             match = infostring.split(";")[0]
-
         if prefix:
             match = '{}_{}'.format(prefix, match)
 
@@ -196,8 +202,6 @@ class GxfParse(object):
                 # tags = list(set(child_tags + transcript_tags))
                 tags = child_tags + transcript_tags
             match = self.__field_match(infostring, tags, delimiter, tag_order=True)
-            if not match and feat_type == "transcript":
-                match = self.get_ID()
         try:
             match = match.split(',') # updated GFF3 spec can list multiple parents
         except:
