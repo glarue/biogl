@@ -61,7 +61,7 @@ class GxfParse(object):
                 tags = [next(t for t in tags if t.lower() in infostring.lower())]
             except StopIteration:
                 return None
-        info_bits = infostring.split(delimiter)
+        info_bits = [e.strip() for e in infostring.split(delimiter)]
         try:
             match = next(
                 e for e in info_bits
