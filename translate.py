@@ -87,7 +87,7 @@ def translate(
         string = ''.join(string.split())
     if as_codons:
         codons = _get_codons(string, p=phase)
-        return ' '.join(codons)
+        return list(codons)
     string = string.replace('U', 'T')
     codons = _get_codons(string, p=phase)
     stop_codons = ('TAG', 'TGA', 'TAA')
