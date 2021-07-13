@@ -16,7 +16,8 @@ def arg_info_header(args, comment_char='#'):
     arg_bits = []
     for a, v in sorted(vars(args).items()):
         try:
-            v = os.path.abspath(v)
+            if os.path.isfile(v):
+                v = os.path.abspath(v)
         except:
             pass
         v = str(v)
