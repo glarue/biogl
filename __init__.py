@@ -15,3 +15,4 @@ from biogl.recursive_items import recursive_items
 from biogl.window import window
 from biogl.arg_info_header import arg_info_header
 from biogl.coord_overlap import coord_overlap
+from biogl.file_hash import file_hash
