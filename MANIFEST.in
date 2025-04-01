@@ -1,0 +1,3 @@
+include pyproject.toml README.md
+recursive-include biogl *.py
+exclude tests/*
