@@ -6,17 +6,17 @@ from smart_open import open as smart_open
 
 
 def fasta_parse(
-    fasta: Union[Path, str, Iterator[str]],
+    fasta: Union[PathLike, Iterator[str]],
     delimiter: str = ">",
     separator: Optional[str] = "",
     trim_header: bool = True,
-    header_pattern: Optional[Union[str, Pattern[str]]] = None,
-) -> Iterator[Tuple[str, Union[str, List[str]]]]:
+    header_extract_pattern: str | re.Pattern[str] | None = None,
+) -> Iterator[Tuple[str, str | List[str]]]:
     """
     Iterator which takes FASTA as input and yields header/record pairs.
 
     Parameters:
-        fasta (Union[Path, str, Iterator[str]]): The FASTA input, which can be a file path,
+        fasta (Union[PathLike, Iterator[str]]): The FASTA input, which can be a file path,
             a string, or an iterator of strings.
         delimiter (str, optional): The character used to define new records in the input file.
             Default is '>'.
@@ -24,13 +24,13 @@ def fasta_parse(
             specify None to return a list of strings per record. Default is ''.
         trim_header (bool, optional): If True, the parser will trim the FASTA header by splitting on whitespace
             and taking the first token. Default is True.
-        header_pattern (Optional[Union[str, Pattern[str]]], optional): A regular expression used to further process
-            the header to capture only the matching portion. If provided, it is applied after any trimming.
+        header_extract_pattern (str | re.Pattern[str] | None, optional): A regular expression used to further
+            process the header to capture only the matching portion. If provided, it is applied after any trimming.
             If the pattern contains a capturing group, that group is returned; otherwise, the entire match is used.
             Default is None.
 
     Yields:
-        Iterator[Tuple[str, Union[str, List[str]]]]:
+        Iterator[Tuple[str, str | List[str]]]:
             An iterator of tuples, where each tuple contains a header and a record
             (either as a string or a list of strings).
 
@@ -60,11 +60,11 @@ def fasta_parse(
     """
     # Compile header_pattern once outside of the loop (if provided).
     pat = None
-    if header_pattern is not None:
+    if header_extract_pattern is not None:
         pat = (
-            header_pattern
-            if isinstance(header_pattern, Pattern)
-            else re.compile(header_pattern)
+            header_extract_pattern
+            if isinstance(header_extract_pattern, re.Pattern)
+            else re.compile(header_extract_pattern)
         )
 
     header, seq = None, []
