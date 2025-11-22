@@ -2,7 +2,7 @@
 
 ## Overview
 
-Refactored `GxfParse` class with type hints, improved documentation, and additional convenience attributes while maintaining API compatibility with one intentional breaking change.
+Refactored `GxfParse` class with type hints, improved documentation, additional convenience attributes, and **opt-in GFF3 spec compliance features** while maintaining backward compatibility.
 
 ## Changes Made
 
@@ -126,11 +126,94 @@ Projects using biogl should:
 - `test_backwards_compatibility.py` - Backwards compatibility validation
 - `GXFPARSE_CHANGES.md` - This document
 
+## New Opt-in GFF3 Spec Compliance Features
+
+### 7. URL Decoding (`url_decode: bool = False`)
+
+**Purpose:** Decode percent-encoded attribute values per GFF3 spec
+
+**Example:**
+```python
+# Default behavior (backward compatible)
+parsed = GxfParse("chr1\t...\tID=gene%3B1", 1)
+assert parsed.name == "gene%3B1"  # Not decoded
+
+# With URL decoding enabled
+parsed = GxfParse("chr1\t...\tID=gene%3B1", 1, url_decode=True)
+assert parsed.name == "gene;1"  # Decoded semicolon
+```
+
+**GFF3 spec:** Reserved characters (`;`, `=`, `,`, `%`) must be percent-encoded in attribute values
+
+### 8. Case-Sensitive Matching (`case_sensitive: bool = False`)
+
+**Purpose:** Use case-sensitive attribute name matching per GFF3 spec
+
+**Example:**
+```python
+# Default: case-insensitive (better for GTF/messy files)
+parsed = GxfParse("chr1\t...\tparent=tx1", 1)
+assert parsed.parent == ["tx1"]  # Matches despite lowercase
+
+# Case-sensitive per GFF3 spec
+parsed = GxfParse("chr1\t...\tparent=tx1", 1, case_sensitive=True)
+assert parsed.parent == [None]  # Does NOT match lowercase 'parent'
+```
+
+**GFF3 spec:** Attribute names are case-sensitive. `Parent` is not the same as `parent`.
+
+### 9. Strict Coordinate Validation (`strict_coordinates: bool = False`)
+
+**Purpose:** Validate that start ≤ end per GFF3 spec
+
+**Example:**
+```python
+# Default: auto-correct with min/max swap (permissive)
+parsed = GxfParse("chr1\t...\t9000\t8000\t...", 1)
+assert parsed.start == 8000  # Corrected
+assert parsed.stop == 9000
+
+# Strict validation
+parsed = GxfParse("chr1\t...\t9000\t8000\t...", 1, strict_coordinates=True)
+# Raises: ValueError("Invalid coordinates: start (9000) > end (8000)")
+```
+
+**GFF3 spec:** "Start is always less than or equal to end"
+
+### Usage Examples
+
+```python
+# Default behavior (fully backward compatible)
+parsed = GxfParse(line, 1)
+
+# Full GFF3 spec compliance
+parsed = GxfParse(
+    line, 1,
+    url_decode=True,
+    case_sensitive=True,
+    strict_coordinates=True
+)
+
+# Mix and match as needed
+parsed = GxfParse(line, 1, url_decode=True)  # Just decode URLs
+```
+
+## Testing
+
+Enhanced test suite from 28 to 45 tests:
+- **17 new tests** for opt-in spec compliance features
+- Tests verify backward compatibility (defaults unchanged)
+- Tests verify correct behavior with each option enabled
+- Tests verify combined options work together
+
+**All tests pass:** ✅ 45/45
+
 ## Recommendations
 
 1. **Version bump**: Recommend bumping to 2.0.0 due to breaking change
 2. **Changelog**: Document the `feature_None` → `None` change
 3. **Migration guide**: Simple for users: just change string checks to `is None`
+4. **Opt-in features**: Users can gradually adopt spec compliance features as needed
 
 ## References
 

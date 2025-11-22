@@ -1,4 +1,5 @@
 from typing import List, Optional
+from urllib.parse import unquote
 
 
 class GxfParse(object):
@@ -17,9 +18,49 @@ class GxfParse(object):
       - raw_feat_type : original type string (col 3)
       - raw_strand    : original strand symbol from col 7
       - score     : float(score) or None (col 6)
+
+    Parameters
+    ----------
+    line : str
+        Raw GFF3/GTF line to parse
+    line_number : int
+        Line number (for error reporting)
+    url_decode : bool, optional
+        If True, decode percent-encoded attribute values per GFF3 spec.
+        E.g., 'some%3Bid' becomes 'some;id'. Default: False (backward compatible)
+    case_sensitive : bool, optional
+        If True, use case-sensitive attribute matching per GFF3 spec.
+        Default: False (case-insensitive, better for GTF/messy files)
+    strict_coordinates : bool, optional
+        If True, validate that start <= end and raise ValueError if violated.
+        Default: False (auto-correct with min/max swap)
+
+    Examples
+    --------
+    >>> # Default behavior (backward compatible)
+    >>> parsed = GxfParse(line, 1)
+
+    >>> # Strict GFF3 compliance
+    >>> parsed = GxfParse(line, 1, url_decode=True, case_sensitive=True, strict_coordinates=True)
+
+    >>> # Just validate coordinates
+    >>> parsed = GxfParse(line, 1, strict_coordinates=True)
     """
 
-    def __init__(self, line: str, line_number: int):
+    def __init__(
+        self,
+        line: str,
+        line_number: int,
+        *,  # Force keyword-only arguments
+        url_decode: bool = False,
+        case_sensitive: bool = False,
+        strict_coordinates: bool = False,
+    ):
+        # Store parsing options
+        self._url_decode = url_decode
+        self._case_sensitive = case_sensitive
+        self._strict_coordinates = strict_coordinates
+
         # Preserve original line (without newline) for debugging if needed
         self.raw_line: str = line.rstrip("\n")
         self.bits = self.__split_on_tabs(self.raw_line)
@@ -39,11 +80,23 @@ class GxfParse(object):
                 self.bits[2] if len(self.bits) > 2 else None
             )
 
-            # start / stop: keep original min/max behaviour
+            # start / stop: handle coordinate parsing and validation
             try:
-                self.start: Optional[int] = min(map(int, self.bits[3:5]))
-                self.stop: Optional[int] = max(map(int, self.bits[3:5]))
-            except (ValueError, TypeError):
+                start_val = int(self.bits[3])
+                end_val = int(self.bits[4])
+
+                if strict_coordinates and start_val > end_val:
+                    raise ValueError(
+                        f"Invalid coordinates: start ({start_val}) > end ({end_val}) "
+                        f"at line {line_number}. GFF3 spec requires start <= end."
+                    )
+
+                # Use min/max for backward compatibility unless strict mode
+                self.start: Optional[int] = min(start_val, end_val)
+                self.stop: Optional[int] = max(start_val, end_val)
+            except (ValueError, TypeError) as e:
+                if strict_coordinates and isinstance(e, ValueError) and "Invalid coordinates" in str(e):
+                    raise  # Re-raise coordinate validation errors
                 self.start = None
                 self.stop = None
 
@@ -113,8 +166,8 @@ class GxfParse(object):
 
         return columns
 
-    @staticmethod
     def __field_match(
+        self,
         infostring: str,
         tags,
         delimiter: str,
@@ -122,7 +175,9 @@ class GxfParse(object):
     ) -> Optional[str]:
         """
         Return the value of the first attribute whose key matches any of
-        ``tags`` (case-insensitive), using the given ``delimiter``.
+        ``tags``, using the given ``delimiter``.
+
+        Case sensitivity and URL decoding behavior depend on instance settings.
 
         Examples
         --------
@@ -131,30 +186,48 @@ class GxfParse(object):
 
         infostring: 'gene_id "G1"; transcript_id "T1"'
         tags: ['gene_id'] -> 'G1'
+
+        With url_decode=True:
+        infostring: 'ID=some%3Bid'
+        tags: ['ID='] -> 'some;id'
         """
         if not infostring:
             return None
 
         if tag_order:
-            # Check for first match of tags in order (case-insensitive)
-            lower_info = infostring.lower()
-            try:
-                first_tag = next(t for t in tags if t.lower() in lower_info)
-                tags = [first_tag]
-            except StopIteration:
-                return None
+            # Check for first match of tags in order
+            if self._case_sensitive:
+                try:
+                    first_tag = next(t for t in tags if t in infostring)
+                    tags = [first_tag]
+                except StopIteration:
+                    return None
+            else:
+                lower_info = infostring.lower()
+                try:
+                    first_tag = next(t for t in tags if t.lower() in lower_info)
+                    tags = [first_tag]
+                except StopIteration:
+                    return None
 
         info_bits = [e.strip() for e in infostring.split(delimiter)]
         try:
-            match = next(
-                e
-                for e in info_bits
-                if any(e.lower().startswith(p.lower()) for p in tags)
-            )
+            if self._case_sensitive:
+                match = next(
+                    e
+                    for e in info_bits
+                    if any(e.startswith(p) for p in tags)
+                )
+            else:
+                match = next(
+                    e
+                    for e in info_bits
+                    if any(e.lower().startswith(p.lower()) for p in tags)
+                )
         except StopIteration:  # no matches found
             return None
 
-        # GFF3-style: key=value :contentReference[oaicite:2]{index=2}
+        # GFF3-style: key=value
         if "=" in match:
             substring = match.split("=", 1)[1]
         else:
@@ -164,10 +237,16 @@ class GxfParse(object):
                 return None
             substring = pieces[1]
 
-        return substring.strip().strip('"')
+        result = substring.strip().strip('"')
 
-    @staticmethod
+        # Apply URL decoding if requested
+        if self._url_decode:
+            result = unquote(result)
+
+        return result
+
     def __extract_all_values(
+        self,
         infostring: str,
         key: str,
         delimiter: str = ";",
@@ -179,18 +258,26 @@ class GxfParse(object):
           - comma-separated lists (e.g. Parent=ID1,ID2)
 
         This follows the GFF3 rule that multiple values of the same tag
-        are comma-separated. :contentReference[oaicite:3]{index=3}
+        are comma-separated.
+
+        Case sensitivity and URL decoding behavior depend on instance settings.
         """
         if not infostring:
             return []
-        key_lower = key.lower()
+
         values: List[str] = []
         for field in infostring.split(delimiter):
             field = field.strip()
             if not field:
                 continue
-            if not field.lower().startswith(key_lower):
-                continue
+
+            # Check if field starts with key (case-sensitive or not)
+            if self._case_sensitive:
+                if not field.startswith(key):
+                    continue
+            else:
+                if not field.lower().startswith(key.lower()):
+                    continue
 
             if "=" in field:
                 val = field.split("=", 1)[1].strip()
@@ -201,8 +288,14 @@ class GxfParse(object):
                 val = pieces[1].strip()
 
             val = val.strip('"')
+
+            # Apply URL decoding if requested
+            if self._url_decode:
+                val = unquote(val)
+
             if comma_split and "," in val:
-                values.extend(v.strip() for v in val.split(",") if v.strip())
+                decoded_vals = [v.strip() for v in val.split(",") if v.strip()]
+                values.extend(decoded_vals)
             elif val:
                 values.append(val)
 

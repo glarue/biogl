@@ -316,6 +316,155 @@ class TestWithExternalFiles:
         assert exon_count > 0, "Should parse some exons"
 
 
+
+
+# =============================================================================
+# Spec Compliance Tests (opt-in features)
+# =============================================================================
+
+class TestURLDecoding:
+    """Test URL decoding functionality (GFF3 spec compliance)."""
+
+    def test_url_decode_disabled_by_default(self):
+        """Test that URL decoding is disabled by default (backward compat)."""
+        line = "chr1\tEnsembl\tgene\t1000\t2000\t.\t+\t.\tID=gene%3B1;Name=test%2Cgene"
+        parsed = GxfParse(line, 1)
+        assert parsed.name == "gene%3B1"  # Not decoded
+
+    def test_url_decode_enabled(self):
+        """Test URL decoding when enabled."""
+        line = "chr1\tEnsembl\tgene\t1000\t2000\t.\t+\t.\tID=gene%3B1;Name=test%2Cgene"
+        parsed = GxfParse(line, 1, url_decode=True)
+        assert parsed.name == "gene;1"  # Decoded semicolon
+
+    def test_url_decode_parent(self):
+        """Test URL decoding applies to parent values."""
+        line = "chr1\tEnsembl\texon\t1000\t2000\t.\t+\t.\tParent=tx%3B1"
+        parsed = GxfParse(line, 1, url_decode=True)
+        assert parsed.parent == ["tx;1"]
+
+    def test_url_decode_multiple_parents(self):
+        """Test URL decoding with comma-separated parents."""
+        line = "chr1\tEnsembl\texon\t1000\t2000\t.\t+\t.\tParent=tx%3B1,tx%3B2"
+        parsed = GxfParse(line, 1, url_decode=True)
+        assert "tx;1" in parsed.parent
+        assert "tx;2" in parsed.parent
+
+    def test_url_decode_equals_sign(self):
+        """Test URL decoding of equals sign (=)."""
+        line = "chr1\tEnsembl\tgene\t1000\t2000\t.\t+\t.\tID=gene%3D1"
+        parsed = GxfParse(line, 1, url_decode=True)
+        assert parsed.name == "gene=1"
+
+    def test_url_decode_comma(self):
+        """Test URL decoding of comma in value."""
+        line = "chr1\tEnsembl\tgene\t1000\t2000\t.\t+\t.\tID=gene%2C1"
+        parsed = GxfParse(line, 1, url_decode=True)
+        assert parsed.name == "gene,1"
+
+
+class TestCaseSensitivity:
+    """Test case-sensitive attribute matching (GFF3 spec compliance)."""
+
+    def test_case_insensitive_by_default(self):
+        """Test that case-insensitive matching is default (backward compat)."""
+        # lowercase 'parent' instead of 'Parent'
+        line = "chr1\tEnsembl\texon\t1000\t2000\t.\t+\t.\tparent=tx1"
+        parsed = GxfParse(line, 1)
+        assert parsed.parent == ["tx1"]  # Should match despite lowercase
+
+    def test_case_sensitive_enabled(self):
+        """Test case-sensitive matching when enabled."""
+        # lowercase 'parent' instead of 'Parent'
+        line = "chr1\tEnsembl\texon\t1000\t2000\t.\t+\t.\tparent=tx1"
+        parsed = GxfParse(line, 1, case_sensitive=True)
+        assert parsed.parent == [None]  # Should NOT match
+
+    def test_case_sensitive_correct_case(self):
+        """Test case-sensitive matching with correct case."""
+        line = "chr1\tEnsembl\texon\t1000\t2000\t.\t+\t.\tParent=tx1"
+        parsed = GxfParse(line, 1, case_sensitive=True)
+        assert parsed.parent == ["tx1"]  # Should match with correct case
+
+    def test_case_sensitive_id_lowercase(self):
+        """Test case-sensitive ID matching."""
+        # GFF3 spec: 'ID' is reserved, 'id' would be user-defined
+        # Test with lowercase 'id' but also has proper gene_id attribute
+        line = "chr1\tEnsembl\tgene\t1000\t2000\t.\t+\t.\tid=gene1;gene_id=GENE001"
+        parsed_insensitive = GxfParse(line, 1, case_sensitive=False)
+        parsed_sensitive = GxfParse(line, 1, case_sensitive=True)
+
+        # Case-insensitive: matches lowercase 'id' first
+        assert parsed_insensitive.name == "gene1"
+        # Case-sensitive: 'id' doesn't match, falls back to 'gene_id' which does match
+        assert parsed_sensitive.name == "GENE001"
+
+
+class TestStrictCoordinates:
+    """Test strict coordinate validation (GFF3 spec compliance)."""
+
+    def test_auto_correct_by_default(self):
+        """Test that reversed coordinates are auto-corrected by default."""
+        line = "chr1\tEnsembl\tgene\t9000\t8000\t.\t+\t.\tID=gene1"
+        parsed = GxfParse(line, 1)
+        assert parsed.start == 8000  # min
+        assert parsed.stop == 9000   # max
+
+    def test_strict_coordinates_raises_error(self):
+        """Test that strict_coordinates raises ValueError for reversed coords."""
+        line = "chr1\tEnsembl\tgene\t9000\t8000\t.\t+\t.\tID=gene1"
+        with pytest.raises(ValueError, match="Invalid coordinates.*start.*>.*end"):
+            GxfParse(line, 1, strict_coordinates=True)
+
+    def test_strict_coordinates_valid_coords(self):
+        """Test that valid coordinates pass strict validation."""
+        line = "chr1\tEnsembl\tgene\t8000\t9000\t.\t+\t.\tID=gene1"
+        parsed = GxfParse(line, 1, strict_coordinates=True)
+        assert parsed.start == 8000
+        assert parsed.stop == 9000
+
+    def test_strict_coordinates_equal_coords(self):
+        """Test that equal start/end coordinates pass (zero-length features)."""
+        line = "chr1\tEnsembl\tfeature\t5000\t5000\t.\t+\t.\tID=point"
+        parsed = GxfParse(line, 1, strict_coordinates=True)
+        assert parsed.start == 5000
+        assert parsed.stop == 5000
+
+
+class TestCombinedStrictMode:
+    """Test combining multiple strict options."""
+
+    def test_all_strict_options(self):
+        """Test using all strict options together."""
+        line = "chr1\tEnsembl\tgene\t1000\t2000\t.\t+\t.\tID=gene%3B1;Parent=tx%3B1"
+        parsed = GxfParse(
+            line, 1,
+            url_decode=True,
+            case_sensitive=True,
+            strict_coordinates=True
+        )
+        assert parsed.name == "gene;1"  # URL decoded
+        assert parsed.parent == ["tx;1"]  # URL decoded
+
+    def test_strict_with_invalid_coords(self):
+        """Test that strict mode fails on invalid coordinates even with other options."""
+        line = "chr1\tEnsembl\tgene\t9000\t8000\t.\t+\t.\tID=gene%3B1"
+        with pytest.raises(ValueError, match="Invalid coordinates"):
+            GxfParse(
+                line, 1,
+                url_decode=True,
+                case_sensitive=True,
+                strict_coordinates=True
+            )
+
+    def test_url_decode_with_case_sensitive(self):
+        """Test URL decode works with case-sensitive matching."""
+        line = "chr1\tEnsembl\tgene\t1000\t2000\t.\t+\t.\tID=gene%3B1;parent=tx1"
+        parsed = GxfParse(line, 1, url_decode=True, case_sensitive=True)
+        assert parsed.name == "gene;1"  # Decoded
+        assert parsed.parent == [None]  # lowercase 'parent' not matched
+
+
 if __name__ == "__main__":
     # Run tests with pytest
     pytest.main([__file__, "-v"])
