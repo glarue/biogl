@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Sequence
 from urllib.parse import unquote
 
 
@@ -63,11 +63,14 @@ class GxfParse(object):
 
         # Preserve original line (without newline) for debugging if needed
         self.raw_line: str = line.rstrip("\n")
-        self.bits = self.__split_on_tabs(self.raw_line)
-        if self.bits is None:
+        bits_maybe = self.__split_on_tabs(self.raw_line)
+        if bits_maybe is None:
             # Historically this would have raised a TypeError when trying to
             # subscript None. We keep the TypeError but make it explicit.
             raise TypeError("Comment or malformed annotation line")
+
+        # After the None check, bits is guaranteed to be List[str]
+        self.bits: List[str] = bits_maybe
 
         try:
             self.region: str = self.bits[0]
@@ -125,7 +128,7 @@ class GxfParse(object):
 
             # Classification + relationships
             self.feat_type: str = self.get_type()
-            self.parent: List[Optional[str]] = self.get_parent()
+            self.parent: Sequence[Optional[str]] = self.get_parent()
             self.grandparent: Optional[str] = None
 
             # Try to get grandparent for child types using gene_id / geneID
@@ -415,17 +418,18 @@ class GxfParse(object):
 
         return match
 
-    def get_parent(self, delimiter: str = ";"):
+    def get_parent(self, delimiter: str = ";") -> Sequence[Optional[str]]:
         """
         Retrieves parent information from an annotation line.
 
         Returns
         -------
-        list
-            A list of parent IDs. Multiple parents are supported both
+        Sequence[Optional[str]]
+            A sequence of parent IDs. Multiple parents are supported both
             via:
               - Parent=ID1,ID2 (GFF3 spec)
-              - repeated Parent=ID1;Parent=ID2 (non-canonical but seen) :contentReference[oaicite:4]{index=4}
+              - repeated Parent=ID1;Parent=ID2 (non-canonical but seen)
+            Returns [None] if no parent information is found.
         """
         infostring = self.infostring
 

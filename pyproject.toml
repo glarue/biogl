@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "biogl"
-version = "2.4.0"
+version = "3.0.0"
 description = "A collection of (semi) useful bioinformatics functions"
 authors = [
   { name = "Graham Larue", email = "egrahamlarue@gmail.com" }
@@ -16,6 +16,47 @@ dependencies = [
 ]
 
 requires-python = ">=3.10"
+
+keywords = [
+  "bioinformatics",
+  "genomics",
+  "GFF3",
+  "GTF",
+  "FASTA",
+  "parsing",
+  "utilities"
+]
+
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Science/Research",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Typing :: Typed"
+]
+
+[project.urls]
+Homepage = "https://github.com/grahamlarue/biogl"
+Repository = "https://github.com/grahamlarue/biogl"
+Changelog = "https://github.com/grahamlarue/biogl/blob/main/CHANGELOG.md"
+Issues = "https://github.com/grahamlarue/biogl/issues"
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.0",
+  "pytest-cov",
+  "mypy",
+  "black",
+  "isort",
+  "flake8"
+]
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -1,4 +1,4 @@
-__version__ = "2.4.0"
+__version__ = "3.0.0"
 
 from biogl.arg_info_header import arg_info_header
 from biogl.byte_convert import byte_convert
