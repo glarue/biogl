@@ -1,4 +1,5 @@
 import re
+from os import PathLike
 from pathlib import Path
 from typing import Iterator, List, Optional, Pattern, Tuple, Union
 
